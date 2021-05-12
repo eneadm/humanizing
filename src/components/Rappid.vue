@@ -11,8 +11,8 @@
 </template>
 
 <script>
-import { dia, ui, shapes } from '@clientio/rappid';
-
+import { dia, shapes } from '@clientio/rappid'
+import { Paper, Scroller, SnapLines, Listeners } from '../services/rappid/graph'
 import { Stencil, standardShapes } from '../services/rappid/stencil'
 import { persistGraph, fetchGraph } from '../services/requests'
 
@@ -24,7 +24,6 @@ export default {
       stencil: null,
     }
   },
-
   mounted () {
     const { scroller, $refs : {
       stencil,
@@ -38,57 +37,32 @@ export default {
 
     this.fetchGraph()
   },
-
   created () {
-    const graph = this.graph = new dia.Graph({}, {
+    this.graph = new dia.Graph({}, {
       cellNamespace: shapes
     })
 
-    const paper = this.paper = new dia.Paper({
-      width: 1000,
-      height: 1000,
-      gridSize: 10,
-      drawGrid: true,
-      model: graph,
-      interactive: { linkMove: false },
-      snapLinks: { radius: 70 },
-      defaultConnectionPoint: { name: 'boundary' }
-    });
+    this.paper = Paper(this.graph)
 
-    const scroller = this.scroller = new ui.PaperScroller({
-      paper: paper,
-      autoResizePaper: true,
-      cursor: 'grab'
-    });
+    this.scroller = Scroller(this.paper)
+    this.scroller.render()
 
-    scroller.render();
+    this.stencil = Stencil(this.scroller, SnapLines(this.paper))
+    this.stencil.render()
+    this.stencil.load({ standard: standardShapes, other: [] })
 
-    const snapLines = new ui.Snaplines({ paper: paper });
-
-    const stencil = this.stencil = Stencil(scroller, snapLines)
-
-    stencil.render()
-
-    stencil.load({ standard: standardShapes, other: [] })
-
-    paper.on('cell:pointerup', (cellView) =>  {
-      if (cellView.model instanceof dia.Link) return;
-
-      let halo = new ui.Halo({ cellView: cellView });
-
-      halo.render();
-    })
+    Listeners(this.paper)
   },
-
   methods: {
     async fetchGraph() {
-      let data = await fetchGraph()
+      const data = await fetchGraph()
 
-      this.graph.fromJSON(localStorage?.graph
-          ? JSON.parse(localStorage.graph)
-          : data)
+      if (localStorage?.graph) {
+        this.graph.fromJSON(JSON.parse(localStorage.graph))
+      } else {
+        this.graph.fromJSON(data)
+      }
     },
-
     async persistGraph() {
       this.graph
           .set('graphCustomProperty', true)

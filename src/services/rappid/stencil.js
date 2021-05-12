@@ -1,4 +1,4 @@
-import { ui, shapes } from '@clientio/rappid';
+import { ui, shapes } from '@clientio/rappid'
 
 export const Stencil = (scroller, snapLines) => new ui.Stencil({
     paper: scroller,
