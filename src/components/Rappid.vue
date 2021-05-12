@@ -1,23 +1,20 @@
 <template>
   <div class="joint-app joint-theme-modern">
-    <div class="app-header">
-      <div class="app-title">
-        <h1>Rappid</h1>
-      </div>
-      <div class="toolbar-container" ref="toolbar"></div>
-    </div>
     <div class="app-body">
+      <button class="z-30 absolute top-6 right-6 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" @click="persistGraph">
+        Save
+      </button>
       <div class="stencil-container" ref="stencil"></div>
       <div class="paper-container" ref="paper"></div>
-      <div class="inspector-container" ref="inspector"></div>
-      <div class="navigator-container" ref="navigator"></div>
     </div>
   </div>
 </template>
 
 <script>
 import { dia, ui, shapes } from '@clientio/rappid';
-import { Stencil, standardShapes } from '../services/rappid/config/stencil'
+
+import { Stencil, standardShapes } from '../services/rappid/stencil'
+import { persistGraph, fetchGraph } from '../services/requests'
 
 export default {
   data() {
@@ -30,17 +27,16 @@ export default {
 
   mounted () {
     const { scroller, $refs : {
-      // toolbar,
       stencil,
       paper,
-      // inspector,
-      // navigator,
     }} = this
 
     paper.appendChild(this.scroller.el)
     stencil.appendChild(this.stencil.el)
 
     scroller.center()
+
+    this.fetchGraph()
   },
 
   created () {
@@ -73,19 +69,40 @@ export default {
 
     stencil.render()
 
-    stencil.load({ standard: standardShapes });
+    stencil.load({ standard: standardShapes, other: [] })
 
-    // const rect = new shapes.standard.Rectangle({
-    //   position: { x: 100, y: 100 },
-    //   size: { width: 100, height: 50 },
-    //   attrs: {
-    //     label: {
-    //       text: 'Hello World'
-    //     }
-    //   }
-    // });
-    //
-    // this.graph.addCell(rect);
+    paper.on('cell:pointerup', (cellView) =>  {
+      if (cellView.model instanceof dia.Link) return;
+
+      let halo = new ui.Halo({ cellView: cellView });
+
+      halo.render();
+    })
+  },
+
+  methods: {
+    async fetchGraph() {
+      let data = await fetchGraph()
+
+      this.graph.fromJSON(localStorage?.graph
+          ? JSON.parse(localStorage.graph)
+          : data)
+    },
+
+    async persistGraph() {
+      this.graph
+          .set('graphCustomProperty', true)
+          .set('graphExportTime', Date.now())
+
+      try {
+        await persistGraph(this.graph.toJSON())
+
+        localStorage.graph = JSON.stringify(this.graph.toJSON())
+      }
+      catch (error) {
+        console.log(error)
+      }
+    }
   }
 }
 </script>
